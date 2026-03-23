@@ -121,6 +121,14 @@ class CurrencyFormatter(private val locale: KurrencyLocale = KurrencyLocale.syst
             CurrencyFormatterImpl()
         }
 
+        private val systemFormatter: CurrencyFormatter by lazy { CurrencyFormatter() }
+
+        fun forLocale(locale: KurrencyLocale = KurrencyLocale.systemLocale()): CurrencyFormatter {
+            val systemLocale = KurrencyLocale.systemLocale()
+            if (locale.languageTag == systemLocale.languageTag) return systemFormatter
+            return CurrencyFormatter(locale)
+        }
+
         /**
          * Gets the fraction digits for a currency code.
          * Fraction digits are defined by ISO 4217 and do not vary by locale.

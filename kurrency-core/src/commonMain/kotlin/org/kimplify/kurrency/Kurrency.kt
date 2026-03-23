@@ -50,57 +50,22 @@ class Kurrency private constructor(val code: String) {
             return isValidCurrency(code)
         }
 
-        // Convenience properties for popular currencies
-        // These provide easy access to commonly used currencies without having to construct them manually.
-        // For any other ISO 4217 currency, use Currency.fromCode(code)
-
-        /** US Dollar - World reserve currency */
-        val USD: Kurrency get() = Kurrency("USD")
-
-        /** Euro - Second most traded currency */
-        val EUR: Kurrency get() = Kurrency("EUR")
-
-        /** British Pound Sterling */
-        val GBP: Kurrency get() = Kurrency("GBP")
-
-        /** Japanese Yen */
-        val JPY: Kurrency get() = Kurrency("JPY")
-
-        /** Australian Dollar */
-        val AUD: Kurrency get() = Kurrency("AUD")
-
-        /** Canadian Dollar */
-        val CAD: Kurrency get() = Kurrency("CAD")
-
-        /** Swiss Franc */
-        val CHF: Kurrency get() = Kurrency("CHF")
-
-        /** Chinese Yuan */
-        val CNY: Kurrency get() = Kurrency("CNY")
-
-        /** Indian Rupee */
-        val INR: Kurrency get() = Kurrency("INR")
-
-        /** South Korean Won */
-        val KRW: Kurrency get() = Kurrency("KRW")
-
-        /** Mexican Peso */
-        val MXN: Kurrency get() = Kurrency("MXN")
-
-        /** Brazilian Real */
-        val BRL: Kurrency get() = Kurrency("BRL")
-
-        /** South African Rand */
-        val ZAR: Kurrency get() = Kurrency("ZAR")
-
-        /** New Zealand Dollar */
-        val NZD: Kurrency get() = Kurrency("NZD")
-
-        /** Singapore Dollar */
-        val SGD: Kurrency get() = Kurrency("SGD")
-
-        /** Hong Kong Dollar */
-        val HKD: Kurrency get() = Kurrency("HKD")
+        val USD: Kurrency by lazy { Kurrency("USD") }
+        val EUR: Kurrency by lazy { Kurrency("EUR") }
+        val GBP: Kurrency by lazy { Kurrency("GBP") }
+        val JPY: Kurrency by lazy { Kurrency("JPY") }
+        val AUD: Kurrency by lazy { Kurrency("AUD") }
+        val CAD: Kurrency by lazy { Kurrency("CAD") }
+        val CHF: Kurrency by lazy { Kurrency("CHF") }
+        val CNY: Kurrency by lazy { Kurrency("CNY") }
+        val INR: Kurrency by lazy { Kurrency("INR") }
+        val KRW: Kurrency by lazy { Kurrency("KRW") }
+        val MXN: Kurrency by lazy { Kurrency("MXN") }
+        val BRL: Kurrency by lazy { Kurrency("BRL") }
+        val ZAR: Kurrency by lazy { Kurrency("ZAR") }
+        val NZD: Kurrency by lazy { Kurrency("NZD") }
+        val SGD: Kurrency by lazy { Kurrency("SGD") }
+        val HKD: Kurrency by lazy { Kurrency("HKD") }
     }
 
     override fun equals(other: Any?): Boolean {
@@ -119,7 +84,7 @@ class Kurrency private constructor(val code: String) {
         locale: KurrencyLocale = KurrencyLocale.systemLocale()
     ): Result<String> {
         Cedar.tag("Kurrency").d("Formatting amount: amount=$amount, currency=$code, style=$style")
-        val formatter = CurrencyFormatter(locale)
+        val formatter = CurrencyFormatter.forLocale(locale)
         return when (style) {
             CurrencyStyle.Standard -> formatter.formatCurrencyStyleResult(amount, code)
             CurrencyStyle.Iso -> formatter.formatIsoCurrencyStyleResult(amount, code)

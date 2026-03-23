@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class CurrencyTest {
@@ -449,6 +450,31 @@ class CurrencyTest {
         currencies.forEach { currency ->
             assertTrue(Kurrency.isValid(currency.code), "${currency.code} should be valid")
         }
+    }
+
+    @Test
+    fun testConveniencePropertyReturnsSameInstance() {
+        assertSame(Kurrency.USD, Kurrency.USD)
+    }
+
+    @Test
+    fun testDifferentConveniencePropertiesAreCached() {
+        assertSame(Kurrency.EUR, Kurrency.EUR)
+        assertSame(Kurrency.GBP, Kurrency.GBP)
+    }
+
+    @Test
+    fun testForLocaleWithSystemLocaleReturnsSameInstance() {
+        val f1 = CurrencyFormatter.forLocale()
+        val f2 = CurrencyFormatter.forLocale()
+        assertSame(f1, f2)
+    }
+
+    @Test
+    fun testForLocaleWithDefaultParamReturnsSameInstance() {
+        val f1 = CurrencyFormatter.forLocale(KurrencyLocale.systemLocale())
+        val f2 = CurrencyFormatter.forLocale(KurrencyLocale.systemLocale())
+        assertSame(f1, f2)
     }
 }
 
