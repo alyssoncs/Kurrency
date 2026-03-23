@@ -71,6 +71,10 @@ actual class CurrencyFormatterImpl actual constructor(private val kurrencyLocale
         return formatCurrencyOrOriginal(amount, currencyCode, NSNumberFormatterCurrencyStyle)
     }
 
+    actual override fun formatCompactStyle(amount: String, currencyCode: String): String {
+        return formatCurrencyOrOriginal(amount, currencyCode, NSNumberFormatterCurrencyStyle)
+    }
+
     actual override fun formatIsoCurrencyStyle(
         amount: String,
         currencyCode: String
@@ -97,6 +101,13 @@ actual class CurrencyFormatterImpl actual constructor(private val kurrencyLocale
             KurrencyLog.w { "Formatting failed for $currencyCode with amount $amount: ${throwable.message}" }
             amount
         }
+    }
+
+    actual override fun parseCurrencyAmount(formattedText: String, currencyCode: String): Double? {
+        return runCatching {
+            val formatter = createNumberFormatter(currencyCode, NSNumberFormatterCurrencyStyle)
+            formatter.numberFromString(formattedText)?.doubleValue
+        }.getOrNull()
     }
 
     private fun createNumberFormatter(

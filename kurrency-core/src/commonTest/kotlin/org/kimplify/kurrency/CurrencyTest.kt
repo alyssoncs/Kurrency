@@ -491,5 +491,130 @@ class CurrencyTest {
         assertTrue(formatter.formatCurrencyStyleResult("100", "EUR").isSuccess)
         assertTrue(formatter.formatCurrencyStyleResult("100", "JPY").isSuccess)
     }
+
+    @Test
+    fun testCompactFormatReturnsNonEmptyResult() {
+        val formatter = CurrencyFormatter(KurrencyLocale.US)
+        val result = formatter.formatCompactStyleResult("1234567.89", "USD")
+        assertTrue(result.isSuccess)
+        val formatted = result.getOrNull()
+        assertNotNull(formatted)
+        assertTrue(formatted.isNotBlank())
+    }
+
+    @Test
+    fun testCompactFormatOnKurrency() {
+        val result = Kurrency.USD.formatAmountCompact("1000000")
+        assertTrue(result.isSuccess)
+        assertNotNull(result.getOrNull())
+    }
+
+    @Test
+    fun testCompactFormatRejectsInvalidCurrency() {
+        val formatter = CurrencyFormatter(KurrencyLocale.US)
+        val result = formatter.formatCompactStyleResult("1000", "XYZ")
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun testCompactFormatRejectsInvalidAmount() {
+        val formatter = CurrencyFormatter(KurrencyLocale.US)
+        val result = formatter.formatCompactStyleResult("invalid", "USD")
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun testMinorUnitsFormatting() {
+        val result = Kurrency.USD.formatMinorUnits(123456L)
+        assertTrue(result.isSuccess)
+        val formatted = result.getOrNull()
+        assertNotNull(formatted)
+        assertTrue(formatted.contains("1") && formatted.contains("234"))
+    }
+
+    @Test
+    fun testMinorUnitsFormattingZeroFractionCurrency() {
+        val result = Kurrency.JPY.formatMinorUnits(1000L)
+        assertTrue(result.isSuccess)
+    }
+
+    @Test
+    fun testCurrencyAmountFormat() {
+        val amount = CurrencyAmount.of(12345L, Kurrency.USD)
+        assertEquals(12345L, amount.minorUnits)
+        assertEquals(Kurrency.USD, amount.currency)
+        val formatted = amount.formatOrEmpty()
+        assertTrue(formatted.isNotBlank())
+    }
+
+    @Test
+    fun testCurrencyAmountFromMajorUnits() {
+        val result = CurrencyAmount.fromMajorUnits("123.45", Kurrency.USD)
+        assertTrue(result.isSuccess)
+        assertEquals(12345L, result.getOrNull()?.minorUnits)
+    }
+
+    @Test
+    fun testAccountingStylePositiveAmount() {
+        val result = Kurrency.USD.formatAmount("100.50", CurrencyStyle.Accounting)
+        assertTrue(result.isSuccess)
+        val formatted = result.getOrNull()
+        assertNotNull(formatted)
+        assertFalse(formatted.contains("("))
+    }
+
+    @Test
+    fun testAccountingStyleNegativeAmount() {
+        val result = Kurrency.USD.formatAmount("-100.50", CurrencyStyle.Accounting)
+        assertTrue(result.isSuccess)
+        val formatted = result.getOrNull()
+        assertNotNull(formatted)
+        assertTrue(formatted.startsWith("(") && formatted.endsWith(")"))
+    }
+
+    @Test
+    fun testParseCurrencyAmount() {
+        val formatter = CurrencyFormatter(KurrencyLocale.US)
+        val formatted = formatter.formatCurrencyStyle("1234.56", "USD")
+        val parsed = formatter.parseCurrencyAmountResult(formatted, "USD")
+        assertTrue(parsed.isSuccess)
+        val value = parsed.getOrNull()
+        assertNotNull(value)
+        assertTrue(value > 1234.0 && value < 1235.0)
+    }
+
+    @Test
+    fun testParseCurrencyAmountInvalidText() {
+        val formatter = CurrencyFormatter(KurrencyLocale.US)
+        val result = formatter.parseCurrencyAmountResult("not a number", "USD")
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun testFormatterEquality() {
+        val f1 = CurrencyFormatter(KurrencyLocale.US)
+        val f2 = CurrencyFormatter(KurrencyLocale.US)
+        assertEquals(f1, f2)
+        assertEquals(f1.hashCode(), f2.hashCode())
+    }
+
+    @Test
+    fun testCurrencyMetadataPluralNames() {
+        assertEquals("US Dollars", CurrencyMetadata.USD.displayNamePlural)
+        assertEquals("Japanese Yen", CurrencyMetadata.JPY.displayNamePlural)
+        assertEquals("Euros", CurrencyMetadata.EUR.displayNamePlural)
+        assertEquals("Brazilian Reais", CurrencyMetadata.BRL.displayNamePlural)
+    }
+
+    @Test
+    fun testFractionDigitsFastFallback() {
+        val result = CurrencyFormatter.getFractionDigits("USD")
+        assertTrue(result.isSuccess)
+        assertEquals(2, result.getOrNull())
+
+        val jpyResult = CurrencyFormatter.getFractionDigits("JPY")
+        assertTrue(jpyResult.isSuccess)
+        assertEquals(0, jpyResult.getOrNull())
+    }
 }
 

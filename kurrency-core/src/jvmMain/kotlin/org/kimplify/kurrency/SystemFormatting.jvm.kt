@@ -7,7 +7,7 @@ import java.util.Locale
  * JVM implementation of SystemFormatting.
  * Uses system default locale formatting.
  */
-class SystemFormatting(val locale: Locale): ISystemFormatting {
+class SystemFormatting(val locale: Locale): SystemFormattingProvider {
     override val decimalSeparator: String
         get() = DecimalFormatSymbols.getInstance(locale).decimalSeparator.toString()
 

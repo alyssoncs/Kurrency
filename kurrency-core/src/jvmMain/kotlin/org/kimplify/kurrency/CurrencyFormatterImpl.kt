@@ -30,6 +30,10 @@ actual class CurrencyFormatterImpl actual constructor(
         return formatCurrencyOrOriginal(amount, currencyCode, useIsoCode = false)
     }
 
+    actual override fun formatCompactStyle(amount: String, currencyCode: String): String {
+        return formatCurrencyStyle(amount, currencyCode)
+    }
+
     actual override fun formatIsoCurrencyStyle(
         amount: String,
         currencyCode: String
@@ -69,7 +73,14 @@ actual class CurrencyFormatterImpl actual constructor(
             amount
         }
     }
-    
+
+    actual override fun parseCurrencyAmount(formattedText: String, currencyCode: String): Double? {
+        return runCatching {
+            val numberFormat = createNumberFormat(locale, currencyCode)
+            numberFormat.parse(formattedText)?.toDouble()
+        }.getOrNull()
+    }
+
     private fun createNumberFormat(
         locale: Locale,
         currencyCode: String

@@ -88,6 +88,14 @@ class Kurrency private constructor(val code: String) {
         return when (style) {
             CurrencyStyle.Standard -> formatter.formatCurrencyStyleResult(amount, code)
             CurrencyStyle.Iso -> formatter.formatIsoCurrencyStyleResult(amount, code)
+            CurrencyStyle.Accounting -> formatter.formatCurrencyStyleResult(amount, code).map { formatted ->
+                if (formatted.contains("-") || amount.trimStart().startsWith("-")) {
+                    val withoutMinus = formatted.replace("-", "").replace("\u2212", "").trim()
+                    "($withoutMinus)"
+                } else {
+                    formatted
+                }
+            }
         }
     }
     
@@ -108,6 +116,27 @@ class Kurrency private constructor(val code: String) {
         style: CurrencyStyle = CurrencyStyle.Standard,
         locale: KurrencyLocale = KurrencyLocale.systemLocale()
     ): String = formatAmount(amount, style, locale).getOrDefault("")
+
+    fun formatAmountCompact(
+        amount: String,
+        locale: KurrencyLocale = KurrencyLocale.systemLocale(),
+    ): Result<String> {
+        val formatter = CurrencyFormatter.forLocale(locale)
+        return formatter.formatCompactStyleResult(amount, code)
+    }
+
+    fun formatAmountCompact(
+        amount: Double,
+        locale: KurrencyLocale = KurrencyLocale.systemLocale(),
+    ): Result<String> = formatAmountCompact(amount.toString(), locale)
+
+    fun formatMinorUnits(
+        minorUnits: Long,
+        locale: KurrencyLocale = KurrencyLocale.systemLocale(),
+    ): Result<String> {
+        val formatter = CurrencyFormatter.forLocale(locale)
+        return formatter.formatMinorUnitsResult(minorUnits, code)
+    }
 
     fun format(
         amount: String,
@@ -135,5 +164,6 @@ class FormattedCurrencyDelegate(
 
 enum class CurrencyStyle {
     Standard,
-    Iso
+    Iso,
+    Accounting,
 }
