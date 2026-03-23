@@ -1,6 +1,7 @@
 package org.kimplify.kurrency
 
 import org.kimplify.kurrency.extensions.normalizeAmount
+import java.text.DecimalFormat
 import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
@@ -52,10 +53,13 @@ actual class CurrencyFormatterImpl actual constructor(
             requireNotNull(currency) { "Currency instance is null for code: $currencyCode" }
 
             if (useIsoCode) {
-                val numberFormat = NumberFormat.getNumberInstance(locale)
-                numberFormat.minimumFractionDigits = currency.defaultFractionDigits
-                numberFormat.maximumFractionDigits = currency.defaultFractionDigits
-                "$currencyCode ${numberFormat.format(value)}"
+                val numberFormat = createNumberFormat(locale, currencyCode)
+                if (numberFormat is DecimalFormat) {
+                    val symbols = numberFormat.decimalFormatSymbols
+                    symbols.currencySymbol = currencyCode
+                    numberFormat.decimalFormatSymbols = symbols
+                }
+                numberFormat.format(value)
             } else {
                 val numberFormat = createNumberFormat(locale, currencyCode)
                 numberFormat.format(value) ?: ""

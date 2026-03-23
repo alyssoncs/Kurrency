@@ -165,7 +165,7 @@ class CurrencyFormatter(private val locale: KurrencyLocale = KurrencyLocale.syst
             getFractionDigits(currencyCode).getOrDefault(DEFAULT_FRACTION_DIGITS)
 
         private fun isValidCurrencyCode(code: String): Boolean =
-            code.length == 3 && code.all { it.isLetter() }
+            code.length == 3 && code.all { it.isLetter() } && isValidCurrency(code)
 
         private fun isValidAmount(amount: String): Boolean =
             amount.isNotBlank() && amount.normalizeAmount().toDoubleOrNull() != null

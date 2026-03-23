@@ -148,4 +148,17 @@ class LocaleFormattingTest {
         assertTrue(result.isSuccess)
         assertNotNull(result.getOrNull())
     }
+
+    @Test
+    fun testIsoFormattingContainsCurrencyCodeForAllLocales() {
+        val locales = listOf(KurrencyLocale.US, KurrencyLocale.GERMANY, KurrencyLocale.JAPAN)
+        locales.forEach { locale ->
+            val formatter = CurrencyFormatter(locale)
+            val result = formatter.formatIsoCurrencyStyle("1234.56", "EUR")
+            assertTrue(
+                result.contains("EUR"),
+                "ISO format for ${locale.languageTag} should contain EUR: $result"
+            )
+        }
+    }
 }

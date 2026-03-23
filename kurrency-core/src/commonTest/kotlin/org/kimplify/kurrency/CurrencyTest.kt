@@ -476,5 +476,20 @@ class CurrencyTest {
         val f2 = CurrencyFormatter.forLocale(KurrencyLocale.systemLocale())
         assertSame(f1, f2)
     }
+
+    @Test
+    fun testFormatterRejectsNonexistentCurrencyCode() {
+        val formatter = CurrencyFormatter(KurrencyLocale.US)
+        val result = formatter.formatCurrencyStyleResult("100", "XYZ")
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun testFormatterStillAcceptsValidCurrencyCodes() {
+        val formatter = CurrencyFormatter(KurrencyLocale.US)
+        assertTrue(formatter.formatCurrencyStyleResult("100", "USD").isSuccess)
+        assertTrue(formatter.formatCurrencyStyleResult("100", "EUR").isSuccess)
+        assertTrue(formatter.formatCurrencyStyleResult("100", "JPY").isSuccess)
+    }
 }
 
