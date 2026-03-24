@@ -1,6 +1,7 @@
 package org.kimplify.kurrency
 
 import org.kimplify.kurrency.extensions.normalizeAmount
+import kotlin.math.abs
 
 expect class CurrencyFormatterImpl(kurrencyLocale: KurrencyLocale = KurrencyLocale.systemLocale()) : CurrencyFormat {
     override fun getFractionDigitsOrDefault(currencyCode: String, default: Int): Int
@@ -267,6 +268,164 @@ class CurrencyFormatter(private val locale: KurrencyLocale = KurrencyLocale.syst
         }
     }
 
+    /**
+     * Formats an amount with fine-grained [CurrencyFormatOptions].
+     *
+     * This method uses the platform's standard currency formatter as a base and then
+     * post-processes the output to apply the requested options (symbol display, grouping,
+     * negative style, fraction digits, zero display, and symbol position).
+     *
+     * ```kotlin
+     * val formatter = CurrencyFormatter(KurrencyLocale.US)
+     * val opts = CurrencyFormatOptions {
+     *     symbolDisplay = SymbolDisplay.ISO_CODE
+     *     negativeStyle = NegativeStyle.PARENTHESES
+     * }
+     * formatter.formatWithOptions("1234.56", "USD", opts)
+     * // => Result.success("(USD 1,234.56)")  // when amount is negative
+     * ```
+     *
+     * @param amount The amount to format (supports locale-aware input like "1.234,56")
+     * @param currencyCode The ISO 4217 currency code (e.g., "USD", "EUR")
+     * @param options The formatting options to apply
+     * @return Result containing the formatted string, or failure if validation fails
+     */
+    fun formatWithOptions(
+        amount: String,
+        currencyCode: String,
+        options: CurrencyFormatOptions,
+    ): Result<String> {
+        return formatWithValidation(amount, currencyCode) { normalizedAmount ->
+            runCatching {
+                val numericValue = normalizedAmount.toDoubleOrNull()
+                    ?: throw KurrencyError.InvalidAmount(amount)
+
+                // Zero display handling
+                if (numericValue == 0.0) {
+                    when (options.zeroDisplay) {
+                        ZeroDisplay.DASH -> return@runCatching "\u2014" // em-dash
+                        ZeroDisplay.EMPTY -> return@runCatching ""
+                        ZeroDisplay.SHOW -> { /* fall through to normal formatting */ }
+                    }
+                }
+
+                val metadata = CurrencyMetadata.parse(currencyCode).getOrNull()
+                val symbol = metadata?.symbol ?: ""
+                val isNegative = numericValue < 0
+                val absAmount = if (isNegative) {
+                    if (normalizedAmount.startsWith("-")) normalizedAmount.drop(1) else normalizedAmount
+                } else {
+                    normalizedAmount
+                }
+
+                // Format the absolute amount with custom fraction digits if needed
+                val formattedAbsAmount = formatNumberPortion(absAmount, currencyCode, options)
+
+                // Build the currency indicator
+                val currencyIndicator = when (options.symbolDisplay) {
+                    SymbolDisplay.SYMBOL -> symbol
+                    SymbolDisplay.ISO_CODE -> currencyCode
+                    SymbolDisplay.NAME -> {
+                        if (abs(numericValue) == 1.0) metadata?.displayName ?: currencyCode
+                        else metadata?.displayNamePlural ?: currencyCode
+                    }
+                    SymbolDisplay.NONE -> ""
+                }
+
+                // Determine symbol position
+                val effectivePosition = when (options.symbolPosition) {
+                    SymbolPosition.LOCALE_DEFAULT -> detectSymbolPosition(currencyCode, symbol)
+                    SymbolPosition.LEADING -> SymbolPosition.LEADING
+                    SymbolPosition.TRAILING -> SymbolPosition.TRAILING
+                }
+
+                // Assemble result with currency indicator
+                var result = when {
+                    currencyIndicator.isEmpty() -> formattedAbsAmount
+                    effectivePosition == SymbolPosition.LEADING || effectivePosition == SymbolPosition.LOCALE_DEFAULT ->
+                        "$currencyIndicator$formattedAbsAmount"
+                    else -> "$formattedAbsAmount $currencyIndicator"
+                }
+
+                // Handle negative style
+                if (isNegative) {
+                    result = when (options.negativeStyle) {
+                        NegativeStyle.PARENTHESES -> "($result)"
+                        NegativeStyle.MINUS_SIGN -> "-$result"
+                        NegativeStyle.LOCALE_DEFAULT -> "-$result"
+                    }
+                }
+
+                result
+            }
+        }
+    }
+
+    /**
+     * Formats just the numeric portion of the amount (no currency symbol), applying
+     * grouping and fraction-digit options.
+     */
+    private fun formatNumberPortion(
+        absAmount: String,
+        currencyCode: String,
+        options: CurrencyFormatOptions,
+    ): String {
+        val fractionDigits = CurrencyMetadata.parse(currencyCode).getOrNull()?.fractionDigits
+            ?: getFractionDigitsOrDefault(currencyCode)
+
+        val rawMinFrac = options.minFractionDigits ?: fractionDigits
+        val rawMaxFrac = options.maxFractionDigits ?: fractionDigits
+        // Ensure min <= max when only one side is explicitly set
+        val maxFrac = rawMaxFrac
+        val minFrac = minOf(rawMinFrac, maxFrac)
+
+        val doubleVal = absAmount.toDoubleOrNull() ?: 0.0
+
+        // Format the number to a plain decimal string with the right precision
+        val plainFormatted = formatDecimal(doubleVal, minFrac, maxFrac)
+
+        // Split into integer and fractional parts
+        val parts = plainFormatted.split(".")
+        val integerPart = parts[0]
+        val fractionalPart = if (parts.size > 1) parts[1] else ""
+
+        // Apply grouping
+        val groupedInteger = if (options.grouping) {
+            applyGrouping(integerPart, locale.groupingSeparator)
+        } else {
+            integerPart
+        }
+
+        // Reassemble with locale decimal separator
+        return if (fractionalPart.isNotEmpty()) {
+            "$groupedInteger${locale.decimalSeparator}$fractionalPart"
+        } else {
+            groupedInteger
+        }
+    }
+
+    /**
+     * Detects whether the locale places the currency symbol before or after the number
+     * by formatting a sample amount and checking the position.
+     */
+    private fun detectSymbolPosition(currencyCode: String, symbol: String): SymbolPosition {
+        if (symbol.isEmpty()) return SymbolPosition.LEADING
+
+        // Format a sample to detect position
+        val sample = impl.formatCurrencyStyle("1", currencyCode)
+
+        // Check if symbol appears before or after the digit
+        val symbolIndex = sample.indexOf(symbol)
+        val digitIndex = sample.indexOfFirst { it.isDigit() }
+
+        return when {
+            symbolIndex < 0 -> SymbolPosition.LEADING // fallback
+            digitIndex < 0 -> SymbolPosition.LEADING // fallback
+            symbolIndex < digitIndex -> SymbolPosition.LEADING
+            else -> SymbolPosition.TRAILING
+        }
+    }
+
     private fun formatWithValidation(
         amount: String,
         currencyCode: String,
@@ -391,6 +550,56 @@ class CurrencyFormatter(private val locale: KurrencyLocale = KurrencyLocale.syst
                     result = result.replace("\uFDFC", "") // ﷼
                 }
             }
+            return result
+        }
+
+        /**
+         * Formats a Double to a plain decimal string with the specified fraction digit range.
+         * Uses rounding-half-even (banker's rounding) via standard Kotlin rounding.
+         */
+        internal fun formatDecimal(value: Double, minFractionDigits: Int, maxFractionDigits: Int): String {
+            // Round to maxFractionDigits
+            val factor = tenPow(maxFractionDigits)
+            val rounded = kotlin.math.round(value * factor) / factor
+
+            val plain = doubleToPlainString(rounded)
+            val parts = plain.split(".")
+            val intPart = parts[0]
+            val rawFrac = if (parts.size > 1) parts[1] else ""
+
+            // Trim trailing zeros down to minFractionDigits, but keep at least minFractionDigits
+            val paddedFrac = rawFrac.padEnd(maxFractionDigits, '0').take(maxFractionDigits)
+            val trimmedFrac = if (paddedFrac.length > minFractionDigits) {
+                val trimmed = paddedFrac.trimEnd('0')
+                if (trimmed.length < minFractionDigits) trimmed.padEnd(minFractionDigits, '0')
+                else trimmed
+            } else {
+                paddedFrac.padEnd(minFractionDigits, '0')
+            }
+
+            return if (trimmedFrac.isEmpty()) intPart else "$intPart.$trimmedFrac"
+        }
+
+        /**
+         * Applies locale-specific grouping separators to an integer string.
+         */
+        internal fun applyGrouping(integerPart: String, separator: Char): String {
+            if (integerPart.length <= 3) return integerPart
+            val sb = StringBuilder()
+            var count = 0
+            for (i in integerPart.length - 1 downTo 0) {
+                if (count > 0 && count % 3 == 0) {
+                    sb.append(separator)
+                }
+                sb.append(integerPart[i])
+                count++
+            }
+            return sb.reverse().toString()
+        }
+
+        private fun tenPow(n: Int): Double {
+            var result = 1.0
+            repeat(n) { result *= 10.0 }
             return result
         }
 

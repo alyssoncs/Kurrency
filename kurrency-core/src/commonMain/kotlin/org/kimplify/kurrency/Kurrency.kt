@@ -99,6 +99,45 @@ class Kurrency private constructor(val code: String) {
         locale: KurrencyLocale = KurrencyLocale.systemLocale()
     ): String = formatAmount(amount, style, locale).getOrDefault("")
 
+    /**
+     * Formats an amount using fine-grained [CurrencyFormatOptions].
+     *
+     * ```kotlin
+     * val opts = CurrencyFormatOptions {
+     *     symbolDisplay = SymbolDisplay.ISO_CODE
+     *     negativeStyle = NegativeStyle.PARENTHESES
+     * }
+     * Kurrency.USD.formatAmountWithOptions("1234.56", opts)
+     * ```
+     *
+     * @param amount The amount to format
+     * @param options The formatting options to apply
+     * @param locale The locale for number formatting (defaults to system locale)
+     * @return Result containing the formatted string, or failure if validation fails
+     */
+    fun formatAmountWithOptions(
+        amount: String,
+        options: CurrencyFormatOptions,
+        locale: KurrencyLocale = KurrencyLocale.systemLocale(),
+    ): Result<String> {
+        val formatter = CurrencyFormatter(locale)
+        return formatter.formatWithOptions(amount, code, options)
+    }
+
+    /**
+     * Formats a Double amount using fine-grained [CurrencyFormatOptions].
+     *
+     * @param amount The amount to format
+     * @param options The formatting options to apply
+     * @param locale The locale for number formatting (defaults to system locale)
+     * @return Result containing the formatted string, or failure if validation fails
+     */
+    fun formatAmountWithOptions(
+        amount: Double,
+        options: CurrencyFormatOptions,
+        locale: KurrencyLocale = KurrencyLocale.systemLocale(),
+    ): Result<String> = formatAmountWithOptions(amount.toString(), options, locale)
+
     fun formatAmountCompact(
         amount: String,
         locale: KurrencyLocale = KurrencyLocale.systemLocale(),

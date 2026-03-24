@@ -23,6 +23,35 @@ data class CurrencyAmount(
         locale: KurrencyLocale = KurrencyLocale.systemLocale(),
     ): String = format(style, locale).getOrDefault("")
 
+    /**
+     * Formats this amount using fine-grained [CurrencyFormatOptions].
+     *
+     * @param options The formatting options to apply
+     * @param locale The locale for number formatting (defaults to system locale)
+     * @return Result containing the formatted string, or failure if validation fails
+     */
+    fun format(
+        options: CurrencyFormatOptions,
+        locale: KurrencyLocale = KurrencyLocale.systemLocale(),
+    ): Result<String> {
+        val fractionDigits = currency.fractionDigitsOrDefault
+        val divisor = 10.0.pow(fractionDigits)
+        val majorAmount = minorUnits / divisor
+        return currency.formatAmountWithOptions(majorAmount.toString(), options, locale)
+    }
+
+    /**
+     * Formats this amount using [CurrencyFormatOptions], returning empty string on failure.
+     *
+     * @param options The formatting options to apply
+     * @param locale The locale for number formatting (defaults to system locale)
+     * @return The formatted string, or empty string if formatting fails
+     */
+    fun formatOrEmpty(
+        options: CurrencyFormatOptions,
+        locale: KurrencyLocale = KurrencyLocale.systemLocale(),
+    ): String = format(options, locale).getOrDefault("")
+
     companion object {
         fun of(minorUnits: Long, currency: Kurrency) = CurrencyAmount(minorUnits, currency)
 
