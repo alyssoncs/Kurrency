@@ -186,7 +186,7 @@ enum class NumeralSystem { WESTERN, EASTERN_ARABIC, PERSIAN }
 > |----------|---------------------------|---------------------------|
 > | **Android** | `TextUtils.getLayoutDirectionFromLocale(locale)` | Check locale script via `UScript` or hardcoded tag lookup |
 > | **iOS** | `NSLocale.characterDirectionForLanguage(tag)` | `NSLocale.exemplarCharacterSet` inspection |
-> | **JVM** | `ComponentOrientation.getOrientation(locale).isLeftToRight` (negated) | Hardcoded tag-based lookup (no JVM native API) |
+> | **JVM** | Hardcoded language-tag lookup (`ar`, `he`, `fa`, `ur`, `dv`, `ps` → `true`). Avoids `java.awt.ComponentOrientation` which is unreliable in headless environments. | Hardcoded tag-based lookup (no JVM native API) |
 > | **JS/WasmJs** | `Intl.Locale(tag).textInfo.direction` (with fallback for older engines) | Hardcoded tag-based lookup |
 
 **Changes to `CurrencyFormatterImpl` (all platforms):**
@@ -289,7 +289,8 @@ Core contract: `parse(format(amount)) == amount` for Standard, ISO, and Accounti
 
 - Round-trip for every `CurrencyStyle` × 5+ locales (US, Germany, Japan, Brazil, Saudi Arabia)
 - Accounting negatives: `($1,234.56)` → `-1234.56`
-- Compact parsing: `$1.2K` → `1200.0`, `€1,5Mio` → `1500000.0`
+- Compact parsing (English only): `$1.2K` → `1200.0`, `$1.5M` → `1500000.0`
+- Compact parsing (non-English rejected): `€1,5Mio` → `KurrencyError.InvalidAmount`
 - ISO format: `USD 1,234.56` → `1234.56`
 - Edge cases: `$0.00`, `¥0`, `$-0.00`, whitespace-only, empty string
 - RTL formatted strings from Sprint 2 locales
@@ -468,25 +469,46 @@ Custom `KSerializer<KurrencyLocale>` using `KurrencyLocale.fromLanguageTag()`. O
 > **New error type required:** `KurrencyLocale.fromLanguageTag()` currently returns `Result.failure(IllegalArgumentException(...))`, not a `KurrencyError`. As part of this sprint, add:
 >
 > ```kotlin
-> data class InvalidLocale(val languageTag: String) : KurrencyError()
+> class InvalidLocale(val languageTag: String) : KurrencyError("Invalid locale: $languageTag")
 > ```
+>
+> Uses `class` (not `data class`) to be consistent with all existing `KurrencyError` subclasses and avoid `data class`-on-`Exception` pitfalls.
 >
 > Update `fromLanguageTag()` on all platforms to return `KurrencyError.InvalidLocale` instead of `IllegalArgumentException`. This is a behavioral change but not a binary-breaking one since the error is inside a `Result`.
 
 **`CurrencyFormatOptions` → auto-generated:**
+
+**Example with all defaults overridden (full form):**
 
 ```json
 {
     "symbolPosition": "TRAILING",
     "grouping": false,
     "minFractionDigits": 2,
+    "maxFractionDigits": 4,
     "negativeStyle": "PARENTHESES",
-    "symbolDisplay": "SYMBOL",
-    "zeroDisplay": "SHOW"
+    "symbolDisplay": "ISO_CODE",
+    "zeroDisplay": "DASH"
 }
 ```
 
-All supporting enums annotated `@Serializable`. Nullable fields (`minFractionDigits`, `maxFractionDigits`) with `null` defaults are omitted from JSON output. This requires configuring the `Json` instance with `explicitNulls = false`:
+**Example with only overrides (default-omitted form — this is what `KurrencyJson` actually produces):**
+
+```json
+{
+    "symbolPosition": "TRAILING",
+    "grouping": false,
+    "minFractionDigits": 2,
+    "maxFractionDigits": 4,
+    "negativeStyle": "PARENTHESES",
+    "symbolDisplay": "ISO_CODE",
+    "zeroDisplay": "DASH"
+}
+```
+
+> When all fields hold their default values, the serialized output is `{}`. Fields matching their Kotlin default are omitted.
+
+All supporting enums annotated `@Serializable`. Nullable fields (`minFractionDigits`, `maxFractionDigits`) with `null` defaults are omitted, and non-null fields matching their declared default are also omitted. This requires configuring the `Json` instance:
 
 ```kotlin
 val KurrencyJson = Json {
@@ -558,6 +580,7 @@ Validates inputs (rate > 0, amount is finite), multiplies, and returns `Currency
 **Rounding specification:** The input `amount: Double` is treated as major units. The conversion result (`amount * rate`) is rounded to the target currency's fraction digits using `HALF_EVEN` (banker's rounding) before converting to minor units (`Long`). For example:
 - `convert(100.0, USD, JPY, 150.456)` → `15046` minor units (JPY has 0 fraction digits, so `15045.6` rounds to `15046`, and minor = major for JPY)
 - `convert(100.0, USD, KWD, 0.30712)` → `30712` minor units (KWD has 3 fraction digits, so `30.712` × 1000)
+- `convert(100.0, USD, KWD, 0.307125)` → `30712` minor units (HALF_EVEN rounds `30.7125` to `30.712` because the preceding digit `2` is even; HALF_UP would incorrectly give `30713`)
 
 String-based decimal arithmetic is used internally to avoid `Double` precision loss during the minor units conversion step.
 
