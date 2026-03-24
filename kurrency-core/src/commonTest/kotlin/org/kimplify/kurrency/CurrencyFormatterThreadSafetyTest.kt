@@ -244,4 +244,70 @@ class CurrencyFormatterThreadSafetyTest {
             assertEquals(expectedByAmount[pair.second], pair.first)
         }
     }
+
+    @Test
+    fun currencyAmountFromMajorUnits_concurrentAccess_producesConsistentResults() = runTest {
+        val iterations = 100
+
+        val results = (1..iterations).map {
+            async(Dispatchers.Default) {
+                CurrencyAmount.fromMajorUnits("123.45", Kurrency.USD)
+            }
+        }.awaitAll()
+
+        results.forEach { result ->
+            assertTrue(result.isSuccess, "CurrencyAmount.fromMajorUnits should succeed")
+            val amount = result.getOrNull()
+            assertNotNull(amount)
+            assertEquals(12345L, amount.minorUnits, "Minor units should be consistent")
+            assertEquals(Kurrency.USD, amount.currency, "Currency should be consistent")
+        }
+    }
+
+    @Test
+    fun currencyFormatterCreation_concurrentWithDifferentLocales_allWorkCorrectly() = runTest {
+        val locales = listOf(
+            KurrencyLocale.US,
+            KurrencyLocale.GERMANY,
+            KurrencyLocale.JAPAN,
+            KurrencyLocale.UK,
+            KurrencyLocale.FRANCE,
+            KurrencyLocale.ITALY,
+            KurrencyLocale.SPAIN,
+            KurrencyLocale.BRAZIL,
+            KurrencyLocale.CANADA,
+            KurrencyLocale.CHINA,
+        )
+
+        val results = locales.flatMap { locale ->
+            (1..10).map {
+                async(Dispatchers.Default) {
+                    val formatter = CurrencyFormatter(locale)
+                    val result = formatter.formatCurrencyStyleResult("1000.00", "USD")
+                    Triple(locale, result, formatter)
+                }
+            }
+        }.awaitAll()
+
+        // All formatters should succeed
+        results.forEach { (locale, result, _) ->
+            assertTrue(result.isSuccess, "Formatting with locale ${locale.languageTag} should succeed")
+            val formatted = result.getOrNull()
+            assertNotNull(formatted, "Formatted result for ${locale.languageTag} should not be null")
+            assertTrue(formatted.any { it.isDigit() }, "Result should contain digits: $formatted")
+        }
+
+        // Verify consistency: same locale should produce same output
+        val groupedByLocale = results.groupBy { it.first.languageTag }
+        groupedByLocale.forEach { (tag, group) ->
+            val firstResult = group.first().second.getOrThrow()
+            group.forEach { (_, result, _) ->
+                assertEquals(
+                    firstResult,
+                    result.getOrThrow(),
+                    "Same locale ($tag) should produce same output"
+                )
+            }
+        }
+    }
 }
