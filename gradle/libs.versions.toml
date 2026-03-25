@@ -1,5 +1,5 @@
 [versions]
-appVersionName = "0.2.5-alpha01"
+appVersionName = "0.3.0"
 
 # SDK Versions
 foundation = "1.11.0-alpha04"
