@@ -1,6 +1,5 @@
 @file:OptIn(ExperimentalWasmDsl::class)
 
-import com.android.build.api.dsl.androidLibrary
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -9,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.maven.publish)
 }
 
@@ -59,19 +59,16 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.runtime)
             implementation(libs.cedar.logging)
+            implementation(libs.kotlinx.serialization.json)
         }
 
-        val commonTest by getting {
-            dependencies {
-                implementation(libs.kotlin.test)
-                implementation(libs.kotlinx.coroutines.test)
-            }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
         }
 
-        val androidMain by getting {
-            dependencies {
-                implementation(libs.androidx.core.ktx)
-            }
+        androidMain.dependencies {
+            implementation(libs.androidx.core.ktx)
         }
 
         androidInstrumentedTest.dependencies {

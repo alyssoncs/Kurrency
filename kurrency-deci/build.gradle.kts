@@ -45,17 +45,13 @@ kotlin {
     }
 
     sourceSets {
-        val commonMain by getting {
-            dependencies {
-                api(project(":kurrency-core"))
-                api(libs.deci)
-            }
+        commonMain.dependencies {
+            api(project(":kurrency-core"))
+            api(libs.deci)
         }
 
-        val commonTest by getting {
-            dependencies {
-                implementation(libs.kotlin.test)
-            }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
         }
     }
 }
