@@ -356,7 +356,21 @@ class MinorUnitsFormattingTest {
     @Test
     fun plainStringMinLong() {
         val result = formatter.minorUnitsToPlainString(Long.MIN_VALUE, "USD")
-        assertTrue(result.startsWith("-"), "MIN_VALUE should be negative: $result")
+        // -9223372036854775808 with 2 fraction digits → "-92233720368547758.08".
+        // Guards against kotlin.math.abs(Long.MIN_VALUE) overflow producing "--..." output.
+        assertEquals("-92233720368547758.08", result)
+    }
+
+    @Test
+    fun plainStringMinLongJpy() {
+        val result = formatter.minorUnitsToPlainString(Long.MIN_VALUE, "JPY")
+        assertEquals(Long.MIN_VALUE.toString(), result)
+    }
+
+    @Test
+    fun plainStringMinLongKwd() {
+        val result = formatter.minorUnitsToPlainString(Long.MIN_VALUE, "KWD")
+        assertEquals("-9223372036854775.808", result)
     }
 
     @Test

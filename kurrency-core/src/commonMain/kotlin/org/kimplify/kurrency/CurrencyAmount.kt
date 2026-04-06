@@ -13,8 +13,18 @@ data class CurrencyAmount(
         locale: KurrencyLocale = KurrencyLocale.systemLocale(),
     ): Result<String> {
         val formatter = CurrencyFormatter(locale)
-        val plainAmount = formatter.minorUnitsToPlainString(minorUnits, currency.code)
-        return currency.formatAmount(plainAmount, style, locale)
+        return when (style) {
+            CurrencyStyle.Standard -> formatter.formatMinorUnitsResult(minorUnits, currency.code)
+            CurrencyStyle.Iso -> formatter.formatMinorUnitsIsoStyleResult(minorUnits, currency.code)
+            CurrencyStyle.Accounting -> formatter.formatMinorUnitsResult(minorUnits, currency.code).map { formatted ->
+                if (minorUnits < 0) {
+                    val withoutMinus = formatted.replace("-", "").replace("\u2212", "").trim()
+                    "($withoutMinus)"
+                } else {
+                    formatted
+                }
+            }
+        }
     }
 
     fun formatOrEmpty(
@@ -34,8 +44,7 @@ data class CurrencyAmount(
         locale: KurrencyLocale = KurrencyLocale.systemLocale(),
     ): Result<String> {
         val formatter = CurrencyFormatter(locale)
-        val plainAmount = formatter.minorUnitsToPlainString(minorUnits, currency.code)
-        return currency.formatAmountWithOptions(plainAmount, options, locale)
+        return formatter.formatMinorUnitsWithOptions(minorUnits, currency.code, options)
     }
 
     /**

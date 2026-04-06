@@ -87,9 +87,15 @@ interface CurrencyFormat {
     fun minorUnitsToPlainString(minorUnits: Long, currencyCode: String): String {
         val fractionDigits = getFractionDigitsOrDefault(currencyCode)
         if (fractionDigits <= 0) return minorUnits.toString()
-        val abs = kotlin.math.abs(minorUnits)
         val sign = if (minorUnits < 0) "-" else ""
-        val str = abs.toString().padStart(fractionDigits + 1, '0')
+        // kotlin.math.abs(Long.MIN_VALUE) overflows back to Long.MIN_VALUE; strip the
+        // leading '-' from its decimal representation instead.
+        val absString = if (minorUnits == Long.MIN_VALUE) {
+            minorUnits.toString().substring(1)
+        } else {
+            kotlin.math.abs(minorUnits).toString()
+        }
+        val str = absString.padStart(fractionDigits + 1, '0')
         val whole = str.dropLast(fractionDigits)
         val fraction = str.takeLast(fractionDigits)
         return "$sign$whole.$fraction"
