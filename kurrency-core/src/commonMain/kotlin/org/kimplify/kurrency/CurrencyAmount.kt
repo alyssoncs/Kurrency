@@ -12,10 +12,9 @@ data class CurrencyAmount(
         style: CurrencyStyle = CurrencyStyle.Standard,
         locale: KurrencyLocale = KurrencyLocale.systemLocale(),
     ): Result<String> {
-        val fractionDigits = currency.fractionDigitsOrDefault
-        val divisor = 10.0.pow(fractionDigits)
-        val majorAmount = minorUnits / divisor
-        return currency.formatAmount(majorAmount.toString(), style, locale)
+        val formatter = CurrencyFormatter(locale)
+        val plainAmount = formatter.minorUnitsToPlainString(minorUnits, currency.code)
+        return currency.formatAmount(plainAmount, style, locale)
     }
 
     fun formatOrEmpty(
@@ -34,10 +33,9 @@ data class CurrencyAmount(
         options: CurrencyFormatOptions,
         locale: KurrencyLocale = KurrencyLocale.systemLocale(),
     ): Result<String> {
-        val fractionDigits = currency.fractionDigitsOrDefault
-        val divisor = 10.0.pow(fractionDigits)
-        val majorAmount = minorUnits / divisor
-        return currency.formatAmountWithOptions(majorAmount.toString(), options, locale)
+        val formatter = CurrencyFormatter(locale)
+        val plainAmount = formatter.minorUnitsToPlainString(minorUnits, currency.code)
+        return currency.formatAmountWithOptions(plainAmount, options, locale)
     }
 
     /**
