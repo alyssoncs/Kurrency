@@ -239,7 +239,43 @@ class CurrencyFormatter(private val locale: KurrencyLocale = KurrencyLocale.syst
         if (!isValidCurrencyCode(currencyCode)) {
             return Result.failure(KurrencyError.InvalidCurrencyCode(currencyCode))
         }
-        return Result.success(impl.formatMinorUnits(minorUnits, currencyCode))
+        val plainAmount = minorUnitsToPlainString(minorUnits, currencyCode)
+        return formatCurrencyStyleResult(plainAmount, currencyCode)
+    }
+
+    fun minorUnitsToPlainStringResult(minorUnits: Long, currencyCode: String): Result<String> {
+        if (!isValidCurrencyCode(currencyCode)) {
+            return Result.failure(KurrencyError.InvalidCurrencyCode(currencyCode))
+        }
+        return Result.success(minorUnitsToPlainString(minorUnits, currencyCode))
+    }
+
+    fun formatMinorUnitsIsoStyleResult(minorUnits: Long, currencyCode: String): Result<String> {
+        if (!isValidCurrencyCode(currencyCode)) {
+            return Result.failure(KurrencyError.InvalidCurrencyCode(currencyCode))
+        }
+        val plainAmount = minorUnitsToPlainString(minorUnits, currencyCode)
+        return formatIsoCurrencyStyleResult(plainAmount, currencyCode)
+    }
+
+    fun formatMinorUnitsCompactStyleResult(minorUnits: Long, currencyCode: String): Result<String> {
+        if (!isValidCurrencyCode(currencyCode)) {
+            return Result.failure(KurrencyError.InvalidCurrencyCode(currencyCode))
+        }
+        val plainAmount = minorUnitsToPlainString(minorUnits, currencyCode)
+        return formatCompactStyleResult(plainAmount, currencyCode)
+    }
+
+    fun formatMinorUnitsWithOptions(
+        minorUnits: Long,
+        currencyCode: String,
+        options: CurrencyFormatOptions,
+    ): Result<String> {
+        if (!isValidCurrencyCode(currencyCode)) {
+            return Result.failure(KurrencyError.InvalidCurrencyCode(currencyCode))
+        }
+        val plainAmount = minorUnitsToPlainString(minorUnits, currencyCode)
+        return formatWithOptions(plainAmount, currencyCode, options)
     }
 
     /**

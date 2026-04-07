@@ -159,6 +159,31 @@ class Kurrency private constructor(val code: String) {
         return formatter.formatMinorUnitsResult(minorUnits, code)
     }
 
+    fun formatMinorUnitsIsoStyle(
+        minorUnits: Long,
+        locale: KurrencyLocale = KurrencyLocale.systemLocale(),
+    ): Result<String> {
+        val formatter = CurrencyFormatter(locale)
+        return formatter.formatMinorUnitsIsoStyleResult(minorUnits, code)
+    }
+
+    fun formatMinorUnitsCompact(
+        minorUnits: Long,
+        locale: KurrencyLocale = KurrencyLocale.systemLocale(),
+    ): Result<String> {
+        val formatter = CurrencyFormatter(locale)
+        return formatter.formatMinorUnitsCompactStyleResult(minorUnits, code)
+    }
+
+    fun formatMinorUnitsWithOptions(
+        minorUnits: Long,
+        options: CurrencyFormatOptions,
+        locale: KurrencyLocale = KurrencyLocale.systemLocale(),
+    ): Result<String> {
+        val formatter = CurrencyFormatter(locale)
+        return formatter.formatMinorUnitsWithOptions(minorUnits, code, options)
+    }
+
     fun format(
         amount: String,
         style: CurrencyStyle = CurrencyStyle.Standard,
